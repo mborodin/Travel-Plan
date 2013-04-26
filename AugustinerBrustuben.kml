@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://earth.google.com/kml/2.2">
+<Document>
+  <name>Augustiner Bräustuben</name>
+  <description><![CDATA[]]></description>
+  <Style id="style6">
+    <IconStyle>
+      <Icon>
+        <href></href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style17">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style3">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style11">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style14">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style8">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style18">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style1">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style13">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style10">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style16">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style7">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style15">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style4">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style2">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style12">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style5">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Style id="style9">
+    <IconStyle>
+      <Icon>
+        <href>http://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png</href>
+      </Icon>
+    </IconStyle>
+  </Style>
+  <Placemark>
+    <name>Augustiner Bräustuben</name>
+    <styleUrl>#style6</styleUrl>
+    <Point>
+      <coordinates>11.545579,48.139236,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Augustiner-Keller</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style17</styleUrl>
+    <Point>
+      <coordinates>11.551652,48.142979,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Hard Rock Cafe Munich</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style3</styleUrl>
+    <Point>
+      <coordinates>11.579399,48.137699,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Немецкий музей</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style11</styleUrl>
+    <Point>
+      <coordinates>11.583399,48.129944,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Немецкий музей</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style14</styleUrl>
+    <Point>
+      <coordinates>11.583399,48.129944,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>BMW Welt Restaurant</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style8</styleUrl>
+    <Point>
+      <coordinates>11.556587,48.176861,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Музей BMW</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style18</styleUrl>
+    <Point>
+      <coordinates>11.559237,48.176949,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Олимпийский парк</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style1</styleUrl>
+    <Point>
+      <coordinates>11.548294,48.174637,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Олимпийский парк</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style13</styleUrl>
+    <Point>
+      <coordinates>11.548294,48.174637,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Rockmuseum Munich</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style10</styleUrl>
+    <Point>
+      <coordinates>11.553755,48.174648,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Neuschwanstein</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style16</styleUrl>
+    <Point>
+      <coordinates>10.749646,47.557732,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Новая ратуша</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style7</styleUrl>
+    <Point>
+      <coordinates>11.575937,48.137814,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Augustinerstraße 2</name>
+    <description><![CDATA[80331 München, Германия<br><img src="https://cbks0.google.com/cbk?output=thumbnail&amp;w=90&amp;h=68&amp;ll=48.138809,11.572487&amp;thumb=0">]]></description>
+    <styleUrl>#style15</styleUrl>
+    <Point>
+      <coordinates>11.572487,48.138809,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Augustinerstraße 2</name>
+    <description><![CDATA[80331 München, Германия<br><img src="https://cbks0.google.com/cbk?output=thumbnail&amp;w=90&amp;h=68&amp;ll=48.138809,11.572487&amp;thumb=0">]]></description>
+    <styleUrl>#style4</styleUrl>
+    <Point>
+      <coordinates>11.572487,48.138809,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Restaurant am Chinesischen Turm</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style2</styleUrl>
+    <Point>
+      <coordinates>11.592336,48.152016,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Энглишер Гартен</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style12</styleUrl>
+    <Point>
+      <coordinates>11.609244,48.169033,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Энглишер Гартен</name>
+    <description><![CDATA[]]></description>
+    <styleUrl>#style5</styleUrl>
+    <Point>
+      <coordinates>11.609244,48.169033,0.000000</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Цугшпитце</name>
+    <description><![CDATA[82491 Гармиш-Партенкирхен, Германия<br>]]></description>
+    <styleUrl>#style9</styleUrl>
+    <Point>
+      <coordinates>10.985278,47.421112,0.000000</coordinates>
+    </Point>
+  </Placemark>
+</Document>
+</kml>
