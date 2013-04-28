@@ -159,7 +159,7 @@ class Cluster:
 			for v in Q:
 				alt = dist[idx] + u.distance(v)
 				idxv = self.points.index(v) # We need to maintain correct index numbers
-				
+				d
 				if alt < dist[idxv]:
 					dist[idxv] = alt
 					previous[idxv] = u
@@ -257,11 +257,11 @@ def findHome(path):
 			return point
 	return None
 
-def downloadMap(cluster,routes=None):
+def downloadMap(cluster, startIDX = 1, routes=None):
 
 	points = cluster.sort()
 
-	url = "http://open.mapquestapi.com/staticmap/v4/getmap?key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u&size=3840,3840&type=map&imagetype=png"
+	url = "http://open.mapquestapi.com/staticmap/v4/getmap?key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u&size=2048,2048&type=map&imagetype=png"
 	
 	homept = findHome(points)
 	home = ""
@@ -272,7 +272,7 @@ def downloadMap(cluster,routes=None):
 	se,nw = cluster.getBB()
 	bestfit = "&bestfit=%7.5f,%7.5f,%7.5f,%7.5f" % (se.getLon(),se.getLat(),nw.getLon(),nw.getLat())
 
-	idx=1
+	idx=startIDX
 	pois="&pois="
 	for pt in points:
 		pois = pois + "bluegreen_1-" + str(idx) + "," + str(pt) + "|"
@@ -281,12 +281,14 @@ def downloadMap(cluster,routes=None):
 	pois = pois[:len(pois)-1]
 	
 	handle = request.urlopen(url + bestfit + pois + home)
-	fout = NamedTemporaryFile(prefix="map",suffix=".png",delete=False)
+	fout = NamedTemporaryFile(prefix="map-",suffix=".png",delete=False)
 	print("[DEBUG] Temp file name is %s" % fout.name)
 	content = handle.read(-1)
 	fout.write(content)
 	fout.close()
 	handle.close()
+	
+	return len(points)
 	
 	
 
@@ -306,9 +308,9 @@ def main():
 	print(pts[0].distance(pts[1]))
 	
 	print("===========================================================")
-	cluster = clusters[0]
-	
-	downloadMap(cluster)
+	idx = 1
+	for cluster in clusters:
+		idx = idx + downloadMap(cluster)
 	
 	#getDirections(path)
 	
