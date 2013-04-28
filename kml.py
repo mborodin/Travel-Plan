@@ -24,7 +24,9 @@
 
 import xml.etree.ElementTree as etree
 from math import cos,pi,sqrt,sin,atan2
-#import urllib.request
+import urllib.request as request
+from tempfile import NamedTemporaryFile
+import json
 
 class Point:
 	def __init__(self,name,lat,lon,desc=None):
@@ -34,7 +36,7 @@ class Point:
 		self.desc=desc
 		
 	def __str__(self):
-		return self.name + " is @ Lon: " + str(self.lon) + " Lat: " + str(self.lat)
+		return str(self.lon) + "," + str(self.lat)
 		
 	def getLat(self):
 		return self.lat
@@ -49,6 +51,9 @@ class Point:
 		return self.desc
 	
 	def distance(self,pt):
+		"""
+		Calculate distance in meters between two points
+		"""
 		r = 6378137
 		toRad = lambda x : pi * x / 180.0
 		dLat = toRad(self.lat - pt.lat)
@@ -98,6 +103,73 @@ class Cluster:
 			self.calculateBB()
 		return self.bb
 	
+	def pickFirstPoint(self):
+		for pt in self.points:
+			if pt.getName()=="Home":
+				return pt
+		return self.points[0]
+	
+	def sort(self):
+		pt = self.pickFirstPoint()
+		path = [pt]
+		points = self.points.copy()
+		points.remove(pt)
+		
+		while len(points) != 0:
+			distances = [pt.distance(point) for point in points]
+			min_dist = min(distances)
+			idx = distances.index(min_dist)
+			pt = points.pop(idx)
+			path.append(pt)
+		return path
+	
+	def dijkstra(self,start = None):
+		if start == None:
+			start = self.pickFirstPoint()
+		Q = self.points.copy()
+		
+		Inf = 1000000.0
+		dist = [Inf]*len(Q) # Initialize distances with 1000 km == Inf
+		previous = [None] * len(Q)
+		
+		idx = Q.index(start)
+		dist[idx] = 0.0 # Distance from source to source is 0
+		
+		while len(Q) > 0:
+			idx = dist.index(min(dist))
+			u = Q.pop(idx)
+			
+			if dist[idx] == Inf:
+				break 
+			
+			for v in Q:
+				alt = dist[idx] + u.distance(v)
+				idxv = self.points.index(v) # We need to maintain correct index numbers
+				
+				if alt < dist[idxv]:
+					dist[idxv] = alt
+					previous[idxv] = u
+		
+		path = []
+		
+		try:
+			pt = start
+			path.append(self.points.index(pt))
+			while True:
+				idx = previous.index(pt)
+				path.append(idx)
+				pt = self.points[idx]
+		except ValueError:
+			pass
+		
+		print(path)
+		
+		
+	
+	def getSize(self):
+		return len(self.points)
+		
+	
 def buildClusters(points):
 	clusters = []
 	pts = points.copy()
@@ -113,11 +185,8 @@ def buildClusters(points):
 		pts = newpts
 	return clusters
 
-
-
-def main():
-	
-	fin = open("AugustinerBrustuben.kml","r")
+def loadKML(path):
+	fin = open(path,"r")
 	tree = etree.parse(fin)
 	root = tree.getroot()
 
@@ -131,6 +200,49 @@ def main():
 		coords = (float(coords_s[0]),float(coords_s[1]))
 		pt = Point(name, coords[0], coords[1], desc)
 		pts.append(pt)
+	return pts
+
+def buildURL(path):
+	points = path.copy()
+	urls=[]
+	origin = points.pop(0)
+	url = "http://maps.googleapis.com/maps/api/directions/json?sensor=false&mode=walking&origin=" + str(origin) + "&waypoints=optimize:true"
+	
+	idx = 0
+	while len(points) != 0 and idx != 8:
+		pt = points.pop(0)
+		idx = idx + 1
+		url = url + "|" + str(pt)
+	
+	if len(points) > 0:
+		pt = points[0]
+		url = url + "&destination=" + str(pt)
+		urls = urls + buildURL(points)
+	
+	urls.append(url)
+	
+	return urls
+
+def getDirections(path):
+	urls = buildURL(path)
+	routes = []
+	for url in urls:
+		handle = request.urlopen(url)
+		lines = handle.readlines()
+		handle.close()
+		content = "".join([line.decode("utf-8","strict") for line in lines])
+		fout = open("file.json","w")
+		fout.writelines([line.decode("utf-8","strict") for line in lines])
+		fout.close()
+		routes.append(json.loads(content))
+	print("Routes found: %i" % len(routes))
+
+def downloadMap(path,routes=None):
+	pass
+
+def main():
+	
+	pts = loadKML("AugustinerBrustuben.kml")
 
 	clusters = buildClusters(pts)
 	
@@ -142,6 +254,24 @@ def main():
 	print(pts[1])
 	
 	print(pts[0].distance(pts[1]))
+	
+	print("===========================================================")
+	cluster = clusters[0]
+	path = cluster.sort()
+	se,nw = cluster.getBB()
+	cluster.dijkstra()
+	print("Bounding box: %7.5f,%7.5f,%7.5f,%7.5f" % (se.getLon(),se.getLat(),nw.getLon(),nw.getLat()))
+	idx=1
+	pois=""
+	for pt in path:
+		pois = pois + "bluegreen_1-" + str(idx) + "," + str(pt) + "|"
+		idx=idx+1
+		
+	pois = pois[:len(pois)-1]
+	
+	getDirections(path)
+	
+	print("POIs: %s" % pois)
 	
 	return 0
 
