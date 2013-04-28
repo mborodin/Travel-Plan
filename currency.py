@@ -1,6 +1,6 @@
-import uno
 import xml.etree.ElementTree as etree
 import urllib.request
+import uno
 
 def findItem(root,name):
 	found = None
@@ -32,6 +32,27 @@ def updateCurrency(event):
 	currencyRange.DataArray = tuple(tmp)
 	
 	handle.close()
+	return None		
+
+
+
+def invokeVBScript(script,_object,param = None):
+	psm = uno.getComponentContext().ServiceManager
+	scriptProvider = psm.createInstance("com.sun.star.script.provider.MasterScriptProviderFactory").createScriptProvider("")
+	xscript = scriptProvider.getScript("vnd.sun.star.script:Standard.Trip."+script+"?language=Basic&location=application")
+	ret = None
+	if param != None:
+		ret = xscript.invoke((_object,),param)
+	else:
+		ret = xscript.invoke((_object,))
+	return ret
+
+def btnClick(event):
+	oDoc = XSCRIPTCONTEXT.getDocument()
+	sheet = oDoc.Sheets.getByName("Summary")
+	r = invokeVBScript("showAlertMessage",sheet)
+	invokeVBScript("showAlertMessageP",sheet,r)
 	return None
 
-g_exportedScripts = updateCurrency,
+######################### Global exports ###############################
+g_exportedScripts = updateCurrency,btnClick,
