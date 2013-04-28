@@ -109,10 +109,24 @@ class Cluster:
 				return pt
 		return self.points[0]
 	
+	def dedup(self):
+		pts = []
+		
+		for pt in self.points:
+			try:
+				for pt2 in pts:
+					if pt.distance(pt2) < 10.0: # Drop all points with distance < 10 m
+						raise ValueError
+				pts.append(pt)
+			except ValueError:
+				pass
+		
+		return pts
+	
 	def sort(self):
 		pt = self.pickFirstPoint()
 		path = [pt]
-		points = self.points.copy()
+		points = self.dedup() #self.points.copy()
 		points.remove(pt)
 		
 		while len(points) != 0:
@@ -237,8 +251,44 @@ def getDirections(path):
 		routes.append(json.loads(content))
 	print("Routes found: %i" % len(routes))
 
-def downloadMap(path,routes=None):
-	pass
+def findHome(path):
+	for point in path:
+		if point.getName() == "Home":
+			return point
+	return None
+
+def downloadMap(cluster,routes=None):
+
+	points = cluster.sort()
+
+	url = "http://open.mapquestapi.com/staticmap/v4/getmap?key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u&size=3840,3840&type=map&imagetype=png"
+	
+	homept = findHome(points)
+	home = ""
+	if homept != None:
+		points.remove(homept)
+		home = ""
+
+	se,nw = cluster.getBB()
+	bestfit = "&bestfit=%7.5f,%7.5f,%7.5f,%7.5f" % (se.getLon(),se.getLat(),nw.getLon(),nw.getLat())
+
+	idx=1
+	pois="&pois="
+	for pt in points:
+		pois = pois + "bluegreen_1-" + str(idx) + "," + str(pt) + "|"
+		idx=idx+1
+		
+	pois = pois[:len(pois)-1]
+	
+	handle = request.urlopen(url + bestfit + pois + home)
+	fout = NamedTemporaryFile(prefix="map",suffix=".png",delete=False)
+	print("[DEBUG] Temp file name is %s" % fout.name)
+	content = handle.read(-1)
+	fout.write(content)
+	fout.close()
+	handle.close()
+	
+	
 
 def main():
 	
@@ -257,21 +307,10 @@ def main():
 	
 	print("===========================================================")
 	cluster = clusters[0]
-	path = cluster.sort()
-	se,nw = cluster.getBB()
-	cluster.dijkstra()
-	print("Bounding box: %7.5f,%7.5f,%7.5f,%7.5f" % (se.getLon(),se.getLat(),nw.getLon(),nw.getLat()))
-	idx=1
-	pois=""
-	for pt in path:
-		pois = pois + "bluegreen_1-" + str(idx) + "," + str(pt) + "|"
-		idx=idx+1
-		
-	pois = pois[:len(pois)-1]
 	
-	getDirections(path)
+	downloadMap(cluster)
 	
-	print("POIs: %s" % pois)
+	#getDirections(path)
 	
 	return 0
 
