@@ -369,10 +369,11 @@ def downloadMap(cluster, startIDX = 1, sessionID=None):
 	home = ""
 	if homept != None:
 		points.remove(homept)
-		home = "&xis=http://icons.iconarchive.com/icons/artua/mac/32/Home-icon.png,1,c," + str(homept) #+ parse.urlencode({"xis":"http://icons.iconarchive.com/icons/artua/mac/32/Home-icon.png"}) + ",1,C,"+str(home)
+		home = "&xis=https://dl.dropboxusercontent.com/u/26599381/Home-icon.png,1,c," + str(homept) #+ parse.urlencode({"xis":"http://icons.iconarchive.com/icons/artua/mac/32/Home-icon.png"}) + ",1,C,"+str(home)
 
 	se,nw = cluster.getBB()
 	bestfit = "&bestfit=%7.5f,%7.5f,%7.5f,%7.5f" % (se.getLat(),se.getLon(),nw.getLat(),nw.getLon())
+
 
 	idx=startIDX
 	pois="&pois="
