@@ -454,7 +454,7 @@ def findHomeInCity(city):
 		if row[0] == city:
 			break
 		idx = idx + 1
-	obj = sheet.getCellByPosition(6,4+idx) # $G4+idx == Home address
+	obj = sheet.getCellByPosition(6,3+idx) # $G4+idx == Home address
 	address = obj.String
 	
 	url = "https://translate.yandex.net/api/v1.5/tr.json/detect?key=trnsl.1.1.20130429T215441Z.6f616164f163020b.8fb0093ebd7d15e7330a32a8c6269f04bf4814e7&text=" + parse.quote(city)
@@ -624,7 +624,7 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			idx = 1
 			mapfiles = []
 		
-			ptidx = 1
+			ptidx = 0
 		
 			for cluster in clusters:
 				session = None
@@ -632,13 +632,13 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 					session, distance = cluster.reorder()
 				points = cluster.sort()
 				for point in points:
-					obj = sheet.getCellByPosition(1,2 + ptidx)
+					obj = sheet.getCellByPosition(1,3 + ptidx)
 					obj.String = str(ptidx)
-					obj = sheet.getCellByPosition(2,2 + ptidx)
+					obj = sheet.getCellByPosition(2,3 + ptidx)
 					obj.String = point.getName()		
 					desc = point.getAddress()
 					if desc != None:
-						obj = sheet.getCellByPosition(3,2 + ptidx)
+						obj = sheet.getCellByPosition(3,3 + ptidx)
 						obj.String = desc
 					ptidx = ptidx + 1
 				npoints,mapfile = downloadMap(cluster,idx,session,callback)		
