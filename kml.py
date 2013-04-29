@@ -25,18 +25,20 @@
 import xml.etree.ElementTree as etree
 from math import cos,pi,sqrt,sin,atan2
 import urllib.request as request
+import urllib.parse as parse
 from tempfile import NamedTemporaryFile
 import json
 
 class Point:
-	def __init__(self,name,lat,lon,desc=None):
+	def __init__(self,name,lon,lat,desc=None):
 		self.name=name
 		self.lon=lon
 		self.lat=lat
 		self.desc=desc
+		self.address = None
 		
 	def __str__(self):
-		return str(self.lon) + "," + str(self.lat)
+		return str(self.lat) + "," + str(self.lon)
 		
 	def getLat(self):
 		return self.lat
@@ -49,6 +51,12 @@ class Point:
 	
 	def getDescription(self):
 		return self.desc
+		
+	def setAddress(self,address):
+		self.address = address
+	
+	def getAddress(self):
+		return self.address
 	
 	def distance(self,pt):
 		"""
@@ -56,13 +64,19 @@ class Point:
 		"""
 		r = 6378137
 		toRad = lambda x : pi * x / 180.0
-		dLat = toRad(self.lat - pt.lat)
-		dLon = toRad(self.lon - pt.lon)
-		lat1 = toRad(self.lat)
-		lat2 = toRad(pt.lat)
-		a = sin(dLat*0.5) * sin(dLat*0.5) + sin(dLon*0.5)*sin(dLon*0.5) * cos(self.lat) * lat1 * lat2
+		dLat = toRad(self.lon - pt.lon)
+		dLon = toRad(self.lat - pt.lat)
+		lat1 = toRad(self.lon)
+		lat2 = toRad(pt.lon)
+		a = sin(dLat*0.5) * sin(dLat*0.5) + sin(dLon*0.5)*sin(dLon*0.5) * cos(self.lon) * lat1 * lat2
 		c = 2.0 * atan2(sqrt(a),sqrt(1.0 - a))
 		return r*c
+	
+	def toobj(self):
+		return { "latLng" : { "lat": self.lat, "lng" : self.lon } }
+		
+	def tojson(self):
+		return json.dumps(self.toobj())
 
 class Cluster:
 	def __init__(self):
@@ -93,8 +107,8 @@ class Cluster:
 		dLon1 = 1000.  * cos(lats[0]) / 111111. # Western
 		dLon2 = 1000.  * cos(lats[npts-1]) / 111111. # Eastern
 		
-		sw = Point("SW", lats[0] - dLat, lons[0] - dLon1)
-		ne = Point("NE", lats[npts-1] + dLat, lons[npts-1] + dLon2)
+		sw = Point("SW", lons[0] - dLon1, lats[0] - dLat)
+		ne = Point("NE", lons[npts-1] + dLon2, lats[npts-1] + dLat)
 		
 		self.bb = (sw,ne)
 	
@@ -123,18 +137,106 @@ class Cluster:
 		
 		return pts
 	
+	def reorganize(self,date,time):
+		
+		self.points = self.dedup()
+		
+		
+		base = "http://www.mapquestapi.com/directions/v1/optimizedroute?"
+		key = "key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u"
+		unit = "&unit=k"
+		routeType = "&routeType=multimodal"
+		reversegeocode = "&doReverseGeocode=false"
+		narrator = "&narrativeType=text"
+		locale = "&locale=uk_UA"
+		outformat="&outFormat=json"
+		
+		params = {}
+		#params["unit"] = "k"
+		#params["routeType"] = "multimodal"
+		#params["doReverseGeocode"] = "false"
+		#params["narrativeType"] = "text"
+		#params["locale"] = "uk_UA"
+		
+		params["options"] = { "unit" : "k", "routeType" : "pedestrian", "locale" : "uk_UA", "timeType":2, "dateType":0, "date" : date, "localTime" : time}
+		
+		class Params(dict):
+			pass
+		
+		p=Params()
+		p.unit = "k"
+		p.routeType = "multimodal"
+		p.doReverseGeocode = False
+		p.narrativeType = "text"
+		p.locale = "uk_UA"
+		
+		home = self.pickFirstPoint()
+		#params["from"] = home.toobj()
+		
+		#p["from"] = home.toobj()
+		
+		path = self.points.copy()
+		path.remove(home)
+		
+		params["locations"] = [home.toobj()] + [ pt.toobj() for pt in path ]
+		
+		#print("From: %s\nTo: %s" % (str(params["from"]),params["locations"]))
+		
+		
+		#import sys
+		#contentlength = sys.getsizeof(p)
+		
+		jsonstr = "&" + parse.urlencode({"json":json.dumps(params)}) 
+		#"&json=" + json.dumps(params)
+		
+		#print(jsonstr)
+		
+		#req = request.Request(base + key + outformat, p, {"Content-Length" : contentlength})
+		
+		#print(base + key + jsonstr)
+		
+		handle = request.urlopen(base + key + jsonstr)
+		
+		jsonstr = "".join([line.decode("utf-8","strict") for line in handle.readlines()])
+		
+		response = json.loads(jsonstr)
+		
+		route = response["route"]
+		info = response["info"]
+		
+		self.bb = ( Point("UL",float(route["boundingBox"]["ul"]["lng"]),float(route["boundingBox"]["ul"]["lat"])), Point("LR",float(route["boundingBox"]["lr"]["lng"]),float(route["boundingBox"]["lr"]["lat"])))
+		
+		session = route["sessionId"]
+		distance = float(route["distance"])
+		
+		locationSequence = route["locationSequence"]
+		
+		points = [self.points[idx] for idx in locationSequence]
+		
+		locations = route["locations"]
+		
+		for idx in range(0,len(locations)):
+			points[idx].setAddress(locations[idx]["street"])
+		
+		self.points = points
+		
+		return session,distance
+		
+	
 	def sort(self):
 		pt = self.pickFirstPoint()
-		path = [pt]
-		points = self.dedup() #self.points.copy()
+		points = self.points.copy()
 		points.remove(pt)
+		path = [pt] + points
+		#points = self.dedup() #self.points.copy()
+		#points.remove(pt)
 		
-		while len(points) != 0:
-			distances = [pt.distance(point) for point in points]
-			min_dist = min(distances)
-			idx = distances.index(min_dist)
-			pt = points.pop(idx)
-			path.append(pt)
+		#while len(points) != 0:
+		#	distances = [pt.distance(point) for point in points]
+		#	min_dist = min(distances)
+		#	idx = distances.index(min_dist)
+		#	pt = points.pop(idx)
+		#	path.append(pt)
 		return path
 	
 	def dijkstra(self,start = None):
@@ -257,7 +359,7 @@ def findHome(path):
 			return point
 	return None
 
-def downloadMap(cluster, startIDX = 1, routes=None):
+def downloadMap(cluster, startIDX = 1, sessionID=None):
 
 	points = cluster.sort()
 
@@ -267,10 +369,10 @@ def downloadMap(cluster, startIDX = 1, routes=None):
 	home = ""
 	if homept != None:
 		points.remove(homept)
-		home = ""
+		home = "&xis=http://icons.iconarchive.com/icons/artua/mac/32/Home-icon.png,1,c," + str(homept) #+ parse.urlencode({"xis":"http://icons.iconarchive.com/icons/artua/mac/32/Home-icon.png"}) + ",1,C,"+str(home)
 
 	se,nw = cluster.getBB()
-	bestfit = "&bestfit=%7.5f,%7.5f,%7.5f,%7.5f" % (se.getLon(),se.getLat(),nw.getLon(),nw.getLat())
+	bestfit = "&bestfit=%7.5f,%7.5f,%7.5f,%7.5f" % (se.getLat(),se.getLon(),nw.getLat(),nw.getLon())
 
 	idx=startIDX
 	pois="&pois="
@@ -280,9 +382,14 @@ def downloadMap(cluster, startIDX = 1, routes=None):
 		
 	pois = pois[:len(pois)-1]
 	
-	handle = request.urlopen(url + bestfit + pois + home)
+	session = ""
+	if sessionID != None:
+		session = "&session=" + sessionID
+	
+	print(url + bestfit + pois + home + session)
+	handle = request.urlopen(url + bestfit + pois + home + session)
 	fout = NamedTemporaryFile(prefix="map-",suffix=".png",delete=False)
-	print("[DEBUG] Temp file name is %s" % fout.name)
+	
 	content = handle.read(-1)
 	fout.write(content)
 	fout.close()
@@ -308,9 +415,15 @@ def main():
 	print(pts[0].distance(pts[1]))
 	
 	print("===========================================================")
+	
+	#clusters[0].reorganize()
+	
 	idx = 1
 	for cluster in clusters:
-		idx = idx + downloadMap(cluster)
+		session = None
+		if cluster.getSize() > 2:
+			session,distance = cluster.reorganize("06/25/2013","09:00")
+		idx = idx + downloadMap(cluster,idx,session)
 	
 	#getDirections(path)
 	

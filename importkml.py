@@ -510,10 +510,10 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 						obj = sheet.getCellByPosition(4,2 + ptidx)
 						obj.String = desc
 					ptidx = ptidx + 1
-#				npoints,mapfile = downloadMap(cluster,idx,None,callback)		
-#				idx = idx + npoints
-#				mapfiles.append(mapfile)
-#				startProgress = startProgress + int(partProgress)
+				npoints,mapfile = downloadMap(cluster,idx,None,callback)		
+				idx = idx + npoints
+				mapfiles.append(mapfile)
+				startProgress = startProgress + int(partProgress)
 				
 			#self.progress.setValue(250)
 			
