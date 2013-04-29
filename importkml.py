@@ -13,25 +13,39 @@ from com.sun.star.awt.FontWeight import BOLD
 import xml.etree.ElementTree as etree
 from math import cos,pi,sqrt,sin,atan2
 import urllib.request as request
+import urllib.parse as parse
 from tempfile import NamedTemporaryFile
 import json
 
 ########################### Internal stuff #############################
 class Point:
-	def __init__(self,name,lat,lon,desc=None):
+	def __init__(self,name,lon,lat,desc=None):
 		self.name=name
 		self.lon=lon
 		self.lat=lat
 		self.desc=desc
+		self.address = None
+		self.city = None
 		
 	def __str__(self):
-		return str(self.lon) + "," + str(self.lat)
+		return str(self.lat) + "," + str(self.lon)
+	
+	def toobj(self):
+		if self.lat == None:
+			return { "city" : self.city, "street" : street}
+		return { "latLng" : { "lat": self.lat, "lng" : self.lon } }
 		
 	def getLat(self):
 		return self.lat
 	
+	def setLat(self,lat):
+		self.lat = lat
+	
 	def getLon(self):
 		return self.lon
+	
+	def setLon(self,lon):
+		self.lon = lon
 	
 	def getName(self):
 		return self.name
@@ -39,17 +53,26 @@ class Point:
 	def getDescription(self):
 		return self.desc
 	
+	def setAddress(self,address):
+		self.address = address
+	
+	def getAddress(self):
+		return self.address
+		
+	def setCity(self,city):
+		self.city = city
+	
 	def distance(self,pt):
 		"""
 		Calculate distance in meters between two points
 		"""
 		r = 6378137
 		toRad = lambda x : pi * x / 180.0
-		dLat = toRad(self.lat - pt.lat)
-		dLon = toRad(self.lon - pt.lon)
-		lat1 = toRad(self.lat)
-		lat2 = toRad(pt.lat)
-		a = sin(dLat*0.5) * sin(dLat*0.5) + sin(dLon*0.5)*sin(dLon*0.5) * cos(self.lat) * lat1 * lat2
+		dLat = toRad(self.lon - pt.lon)
+		dLon = toRad(self.lat - pt.lat)
+		lat1 = toRad(self.lon)
+		lat2 = toRad(pt.lon)
+		a = sin(dLat*0.5) * sin(dLat*0.5) + sin(dLon*0.5)*sin(dLon*0.5) * cos(self.lon) * lat1 * lat2
 		c = 2.0 * atan2(sqrt(a),sqrt(1.0 - a))
 		return r*c
 
@@ -79,11 +102,11 @@ class Cluster:
 		
 		npts = len(lats)
 		dLat = 1000. / 111111.
-		dLon1 = 1000.  * cos(lats[0]) / 111111. # Western
-		dLon2 = 1000.  * cos(lats[npts-1]) / 111111. # Eastern
+		dLon1 = 1000.  * cos(lons[0]) / 111111. # Western
+		dLon2 = 1000.  * cos(lons[npts-1]) / 111111. # Eastern
 		
-		sw = Point("SW", lats[0] - dLat, lons[0] - dLon1)
-		ne = Point("NE", lats[npts-1] + dLat, lons[npts-1] + dLon2)
+		sw = Point("SW", lons[0] - dLon1, lats[0] - dLat)
+		ne = Point("NE", lons[npts-1] + dLon2, lats[npts-1] + dLat)
 		
 		self.bb = (sw,ne)
 	
@@ -112,18 +135,75 @@ class Cluster:
 		
 		return pts
 	
+	def reorder(self):
+		
+		self.points = self.dedup()
+		
+		
+		base = "http://www.mapquestapi.com/directions/v1/optimizedroute?"
+		key = "key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u"
+		unit = "&unit=k"
+		routeType = "&routeType=multimodal"
+		reversegeocode = "&doReverseGeocode=false"
+		narrator = "&narrativeType=text"
+		locale = "&locale=uk_UA"
+		outformat="&outFormat=json"
+		
+		params = {}		
+		params["options"] = { "unit" : "k", "routeType" : "pedestrian", "locale" : "uk_UA"}
+		home = self.pickFirstPoint()
+		path = self.points.copy()
+		path.remove(home)
+		
+		params["locations"] = [home.toobj()] + [ pt.toobj() for pt in path ]
+		
+		jsonstr = "&" + parse.urlencode({"json":json.dumps(params)}) 
+		
+		handle = request.urlopen(base + key + jsonstr)
+		
+		jsonstr = "".join([line.decode("utf-8","strict") for line in handle.readlines()])
+		
+		handle.close()
+		
+		response = json.loads(jsonstr)
+		
+		route = response["route"]
+		info = response["info"]
+		
+		self.bb = ( Point("UL",float(route["boundingBox"]["ul"]["lng"]),float(route["boundingBox"]["ul"]["lat"])), Point("LR",float(route["boundingBox"]["lr"]["lng"]),float(route["boundingBox"]["lr"]["lat"])))
+		
+		session = route["sessionId"]
+		distance = float(route["distance"])
+		
+		locationSequence = route["locationSequence"]
+		
+		points = [self.points[idx] for idx in locationSequence]
+		
+		locations = route["locations"]
+		
+		for idx in range(0,len(locations)):
+			points[idx].setAddress(locations[idx]["street"])
+			points[idx].setLat(locations[idx]["latLng"]["lat"])
+			points[idx].setLon(locations[idx]["latLng"]["lng"])
+		
+		self.points = points
+		
+		return session,distance
+	
 	def sort(self):
 		pt = self.pickFirstPoint()
-		path = [pt]
-		points = self.dedup() #self.points.copy()
+		points = self.points.copy()
 		points.remove(pt)
+		path = [pt] + points
+		#points = self.dedup() #self.points.copy()
+		#points.remove(pt)
 		
-		while len(points) != 0:
-			distances = [pt.distance(point) for point in points]
-			min_dist = min(distances)
-			idx = distances.index(min_dist)
-			pt = points.pop(idx)
-			path.append(pt)
+		#while len(points) != 0:
+		#	distances = [pt.distance(point) for point in points]
+		#	min_dist = min(distances)
+		#	idx = distances.index(min_dist)
+		#	pt = points.pop(idx)
+		#	path.append(pt)
 		return path
 	
 	def dijkstra(self,start = None):
@@ -246,7 +326,7 @@ def findHome(path):
 			return point
 	return None
 
-def downloadMap(cluster, startIDX = 1, routes=None, progressCallback = None):
+def downloadMap(cluster, startIDX = 1, sessionID=None, progressCallback = None):
 
 	points = cluster.sort()
 
@@ -256,10 +336,11 @@ def downloadMap(cluster, startIDX = 1, routes=None, progressCallback = None):
 	home = ""
 	if homept != None:
 		points.remove(homept)
-		home = ""
+		home = "&xis=https://dl.dropboxusercontent.com/u/26599381/Home-icon.png,1,c," + str(homept) #+ parse.urlencode({"xis":"http://icons.iconarchive.com/icons/artua/mac/32/Home-icon.png"}) + ",1,C,"+str(home)
 
 	se,nw = cluster.getBB()
-	bestfit = "&bestfit=%7.5f,%7.5f,%7.5f,%7.5f" % (se.getLon(),se.getLat(),nw.getLon(),nw.getLat())
+	#bestfit = "&bestfit=%7.5f,%7.5f,%7.5f,%7.5f" % (se.getLat(),se.getLon(),nw.getLat(),nw.getLon())
+	bestfit = "&bestfit=%s,%s" % (str(se),str(nw))
 
 	idx=startIDX
 	pois="&pois="
@@ -269,7 +350,11 @@ def downloadMap(cluster, startIDX = 1, routes=None, progressCallback = None):
 		
 	pois = pois[:len(pois)-1]
 	
-	handle = request.urlopen(url + bestfit + pois + home)
+	session = ""
+	if sessionID != None:
+		session = "&session=" + sessionID
+	
+	handle = request.urlopen(url + bestfit + pois + home + session)
 	fout = NamedTemporaryFile(prefix="map-",suffix=".png",delete=False)
 	mapfile = fout.name
 	
@@ -296,7 +381,7 @@ def downloadMap(cluster, startIDX = 1, routes=None, progressCallback = None):
 	
 	return len(points),mapfile
 
-def createSheet(name):
+def createCitySheet(name):
 	oDoc = XSCRIPTCONTEXT.getDocument()
 	sheet = oDoc.Sheets.insertNewByName(name,oDoc.Sheets.getCount())
 	sheet = oDoc.Sheets.getByName(name)
@@ -311,12 +396,9 @@ def createSheet(name):
 	obj.Width = 5550
 	
 	obj = sheet.getColumns().getByName("D")
-	obj.Width = 2560
-	
-	obj = sheet.getColumns().getByName("E")
 	obj.Width = 6840
 	
-	obj = sheet.getColumns().getByName("F")
+	obj = sheet.getColumns().getByName("E")
 	obj.Width = 6840
 	
 	obj = sheet.getRows().getByIndex(0)
@@ -325,7 +407,7 @@ def createSheet(name):
 	obj = sheet.getRows().getByIndex(1)
 	obj.Height = 1400
 	
-	obj = sheet.getCellRangeByName("B2:F2")
+	obj = sheet.getCellRangeByName("B2:E2")
 	obj.merge(True)
 	
 	obj = sheet.getCellByPosition(1,1)
@@ -339,13 +421,12 @@ def createSheet(name):
 	obj = sheet.getCellByPosition(2,2)
 	obj.String = "Name"
 	obj = sheet.getCellByPosition(3,2)
-	obj.String = "Picture"
+	obj.String = "Address"
 	obj = sheet.getCellByPosition(4,2)
-	obj.String = "Description"
-	obj = sheet.getCellByPosition(5,2)
 	obj.String = "Comment"
+
 	
-	obj = sheet.getCellRangeByName("B3:F3")
+	obj = sheet.getCellRangeByName("B3:E3")
 	
 	RGB = lambda r,g,b: r*256*256 + g*256 + b
 	
@@ -353,6 +434,50 @@ def createSheet(name):
 	obj.CharWeight = BOLD
 	
 	return sheet
+
+def loadJSON(url):
+	handle = request.urlopen(url)
+	obj = json.loads("".join([line.decode("utf-8","strict") for line in handle.readlines()]))
+	handle.close()
+	return obj
+
+def findHomeInCity(city):
+	oDoc = XSCRIPTCONTEXT.getDocument()
+	sheet = oDoc.Sheets.getByName("Accommodation")
+	
+	obj = sheet.getCellRangeByName("B4:B50")
+	data = obj.DataArray
+	
+	idx = 0
+	# TODO Fool check should be here
+	for row in data:
+		if row[0] == city:
+			break
+		idx = idx + 1
+	obj = sheet.getCellByPosition(6,4+idx) # $G4+idx == Home address
+	address = obj.String
+	
+	url = "https://translate.yandex.net/api/v1.5/tr.json/detect?key=trnsl.1.1.20130429T215441Z.6f616164f163020b.8fb0093ebd7d15e7330a32a8c6269f04bf4814e7&text=" + parse.quote(city)
+	obj = loadJSON(url)
+	lang = obj["lang"]
+	
+	url = "https://translate.yandex.net/api/v1.5/tr.json/translate?key=trnsl.1.1.20130429T215441Z.6f616164f163020b.8fb0093ebd7d15e7330a32a8c6269f04bf4814e7&lang=" + lang +"-en&text=" + parse.quote(city)
+	obj = loadJSON(url)
+	cityen = obj["text"][0]
+	
+	url = "http://open.mapquestapi.com/geocoding/v1/address?key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u&inFormat=kvp&outFormat=json&thumbMaps=false&maxResults=1&location=" + parse.quote(address) +","+parse.quote(cityen)
+	obj = loadJSON(url)
+	
+	lon = obj["results"][0]["locations"][0]["latLng"]["lng"]
+	lat = obj["results"][0]["locations"][0]["latLng"]["lat"]
+	
+	home = Point("Home",lon,lat)
+	#home.setCity(city)
+	#home.setAddress(address)
+	return home,url
+	
+	
+	
 
 ########################################################################
 
@@ -468,6 +593,7 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 		self.dlg.setVisible(False)
 		self.dlg.createPeer(self.toolkit, None)
 		self.dlg.execute()
+		self.dlg.dispose()
 	
 	def actionPerformed(self, actionEvent):
 		doc = XSCRIPTCONTEXT.getDocument()
@@ -476,8 +602,13 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 		
 		try:
 			self.progress.setValue(0)
-		
-			pts = loadKML(self.kmlfile.getText()) # Parse KML
+
+			cityname = self.cityname.getText()
+			sheet = createCitySheet(cityname)
+			
+			homept,url = findHomeInCity(cityname)
+			MessageBox(parentwin,url,"DEBUG")
+			pts = [homept] + loadKML(self.kmlfile.getText()) # Parse KML
 		
 			self.progress.setValue(25)
 		
@@ -485,7 +616,6 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 		
 			self.progress.setValue(50)
 		
-			sheet = createSheet(self.cityname.getText())
 		
 			partProgress = 250. / float(len(clusters))
 			startProgress = 50
@@ -497,20 +627,21 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			ptidx = 1
 		
 			for cluster in clusters:
+				session = None
+				if cluster.getSize() > 2:
+					session, distance = cluster.reorder()
 				points = cluster.sort()
 				for point in points:
 					obj = sheet.getCellByPosition(1,2 + ptidx)
 					obj.String = str(ptidx)
 					obj = sheet.getCellByPosition(2,2 + ptidx)
-					obj.String = point.getName()
-#					obj = sheet.getCellByPosition(3,2 + ptidx)
-#					obj.String = "Picture"			
-					desc = point.getDescription()
+					obj.String = point.getName()		
+					desc = point.getAddress()
 					if desc != None:
-						obj = sheet.getCellByPosition(4,2 + ptidx)
+						obj = sheet.getCellByPosition(3,2 + ptidx)
 						obj.String = desc
 					ptidx = ptidx + 1
-				npoints,mapfile = downloadMap(cluster,idx,None,callback)		
+				npoints,mapfile = downloadMap(cluster,idx,session,callback)		
 				idx = idx + npoints
 				mapfiles.append(mapfile)
 				startProgress = startProgress + int(partProgress)
@@ -522,10 +653,10 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			self.progress.setValue(300)
 		
 		except BaseException as e:
-				MessageBox(parentwin,"Exception: %s" % str(e),"DEBUG")
+				from traceback import format_exc
+				MessageBox(parentwin,"Exception: %s\n%s" % (str(e),format_exc()),"DEBUG")
 				
 		self.dlg.endDialog()
-		self.dlg.dispose()
 
 def showImportKMLDialog(event):
     Doc = XSCRIPTCONTEXT.getDocument() 

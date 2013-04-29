@@ -137,7 +137,7 @@ class Cluster:
 		
 		return pts
 	
-	def reorganize(self,date,time):
+	def reorganize(self):
 		
 		self.points = self.dedup()
 		
@@ -158,7 +158,7 @@ class Cluster:
 		#params["narrativeType"] = "text"
 		#params["locale"] = "uk_UA"
 		
-		params["options"] = { "unit" : "k", "routeType" : "pedestrian", "locale" : "uk_UA", "timeType":2, "dateType":0, "date" : date, "localTime" : time}
+		params["options"] = { "unit" : "k", "routeType" : "pedestrian", "locale" : "uk_UA"}
 		
 		class Params(dict):
 			pass
@@ -193,7 +193,7 @@ class Cluster:
 		
 		#req = request.Request(base + key + outformat, p, {"Content-Length" : contentlength})
 		
-		#print(base + key + jsonstr)
+		print(base + key + jsonstr)
 		
 		handle = request.urlopen(base + key + jsonstr)
 		
@@ -423,7 +423,7 @@ def main():
 	for cluster in clusters:
 		session = None
 		if cluster.getSize() > 2:
-			session,distance = cluster.reorganize("06/25/2013","09:00")
+			session,distance = cluster.reorganize()
 		idx = idx + downloadMap(cluster,idx,session)
 	
 	#getDirections(path)
