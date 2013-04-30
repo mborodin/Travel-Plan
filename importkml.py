@@ -4,6 +4,8 @@ from com.sun.star.awt import WindowDescriptor
 from com.sun.star.awt.WindowClass import MODALTOP
 from com.sun.star.awt.VclWindowPeerAttribute import OK, OK_CANCEL, YES_NO, YES_NO_CANCEL, RETRY_CANCEL, DEF_OK, DEF_CANCEL, DEF_RETRY, DEF_YES, DEF_NO
 
+from com.sun.star.awt import Size, Point as SWTPoint
+
 import uno
 import unohelper
 from com.sun.star.awt import XActionListener
@@ -474,9 +476,31 @@ def findHomeInCity(city):
 	home = Point("Home",lon,lat)
 	#home.setCity(city)
 	#home.setAddress(address)
-	return home,url
+	return home
 	
-	
+def embedImage(sheet, filename, intname, x, y, w, h):
+		size = Size()
+		coord = SWTPoint()
+		coord.X = x
+		coord.Y = y
+		size.Width = w
+		size.Height = h
+			
+		fpath = "file://" + filename
+		
+		oDoc = XSCRIPTCONTEXT.getDocument()
+		
+		bitmaps = oDoc.createInstance( "com.sun.star.drawing.BitmapTable" )
+		bitmaps.insertByName(intname,fpath)
+		url = bitmaps.getByName(intname)
+			
+		oGraph = oDoc.createInstance("com.sun.star.drawing.GraphicObjectShape")
+		oGraph.GraphicURL = url
+		oGraph.Size = size
+		oGraph.Position = coord
+			
+		drawPage = sheet.DrawPage
+		drawPage.add(oGraph)
 	
 
 ########################################################################
@@ -525,6 +549,9 @@ def MessageBox(ParentWin, MsgText, MsgTitle, MsgType="messbox", MsgButtons=OK):
 
 class ImportKMLDialog( unohelper.Base, XActionListener ):
 	def __init__(self,ctx,psm):
+		
+		self.psm = psm
+		
 		dialogModel = psm.createInstanceWithContext("com.sun.star.awt.UnoControlDialogModel",ctx)
 		dialogModel.PositionX = 100
 		dialogModel.PositionY = 100
@@ -606,8 +633,8 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			cityname = self.cityname.getText()
 			sheet = createCitySheet(cityname)
 			
-			homept,url = findHomeInCity(cityname)
-			MessageBox(parentwin,url,"DEBUG")
+			homept = findHomeInCity(cityname)
+			#MessageBox(parentwin,url,"DEBUG")
 			pts = [homept] + loadKML(self.kmlfile.getText()) # Parse KML
 		
 			self.progress.setValue(25)
@@ -625,6 +652,13 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			mapfiles = []
 		
 			ptidx = 0
+			
+			n = 0
+			baseX = 20130
+			baseY = 2000
+			baseW = 15500
+			baseH = 15500
+			baseStrip = 50
 		
 			for cluster in clusters:
 				session = None
@@ -643,20 +677,23 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 					ptidx = ptidx + 1
 				npoints,mapfile = downloadMap(cluster,idx,session,callback)		
 				idx = idx + npoints
-				mapfiles.append(mapfile)
+				embedImage(sheet, mapfile,cityname+"-"+str(n), baseX, baseY + (baseH+baseStrip)*n, baseW, baseH)
 				startProgress = startProgress + int(partProgress)
-				
-			#self.progress.setValue(250)
+				n = n + 1				
 			
 			# Row height if picture is present: 1790
 			
 			self.progress.setValue(300)
+			
+			MessageBox(parentwin,"Import success","Done")
+			oDoc = XSCRIPTCONTEXT.getDocument()
+			oDoc.CurrentController.ActiveSheet = sheet
 		
 		except BaseException as e:
 				from traceback import format_exc
 				MessageBox(parentwin,"Exception: %s\n%s" % (str(e),format_exc()),"DEBUG")
 				
-		self.dlg.endDialog()
+		self.dlg.endExecute()
 
 def showImportKMLDialog(event):
     Doc = XSCRIPTCONTEXT.getDocument() 
