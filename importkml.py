@@ -463,9 +463,11 @@ def findHomeInCity(city):
 	obj = loadJSON(url)
 	lang = obj["lang"]
 	
-	url = "https://translate.yandex.net/api/v1.5/tr.json/translate?key=trnsl.1.1.20130429T215441Z.6f616164f163020b.8fb0093ebd7d15e7330a32a8c6269f04bf4814e7&lang=" + lang +"-en&text=" + parse.quote(city)
-	obj = loadJSON(url)
-	cityen = obj["text"][0]
+	cityen = city
+	if lang != "en":
+		url = "https://translate.yandex.net/api/v1.5/tr.json/translate?key=trnsl.1.1.20130429T215441Z.6f616164f163020b.8fb0093ebd7d15e7330a32a8c6269f04bf4814e7&lang=" + lang +"-en&text=" + parse.quote(city)
+		obj = loadJSON(url)
+		cityen = obj["text"][0]
 	
 	url = "http://open.mapquestapi.com/geocoding/v1/address?key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u&inFormat=kvp&outFormat=json&thumbMaps=false&maxResults=1&location=" + parse.quote(address) +","+parse.quote(cityen)
 	obj = loadJSON(url)
