@@ -176,6 +176,7 @@ class Cluster:
 		
 		session = route["sessionId"]
 		distance = float(route["distance"])
+		travelTime = route["formattedTime"]
 		
 		locationSequence = route["locationSequence"]
 		
@@ -190,7 +191,25 @@ class Cluster:
 		
 		self.points = points
 		
-		return session,distance
+		routes = []
+		
+		for leg in route["legs"]:
+			step = {}
+			step["distance"] = float(leg["distance"]) * 1000. # Convert to meters
+			step["time"] = leg["formattedTime"]
+			substeps = []
+			for maneuver in leg["maneuvers"]:
+				substep = {}
+				substep["text"] = maneuver["narrative"]
+				substep["icon"] = maneuver["iconUrl"]
+				substep["distance"] = float(maneuver["distance"]) * 1000. # Convert to meters
+				substep["time"] = maneuver["formattedTime"]
+				substep["map"] = maneuver["mapUrl"]
+				substeps.append(substep)
+			step["steps"] = substeps
+			routes.append(substeps)
+		
+		return session,routes,distance,travelTime
 	
 	def sort(self):
 		pt = self.pickFirstPoint()
@@ -247,9 +266,7 @@ class Cluster:
 		except ValueError:
 			pass
 		
-		print(path)
-		
-		
+		print(path)	
 	
 	def getSize(self):
 		return len(self.points)
@@ -437,6 +454,100 @@ def createCitySheet(name):
 	
 	return sheet
 
+def createDirectionsSheet(city):
+	oDoc = XSCRIPTCONTEXT.getDocument()
+	name = city + " Directions"
+	sheet = oDoc.Sheets.insertNewByName(name,oDoc.Sheets.getCount())
+	sheet = oDoc.Sheets.getByName(name)
+	
+	obj = sheet.getColumns().getByName("A")
+	obj.Width = 270
+	
+	obj = sheet.getColumns().getByName("B")
+	obj.Width = 540
+	
+	obj = sheet.getColumns().getByName("C")
+	obj.Width = 760
+	
+	#obj = sheet.getColumns().getByName("D")
+	#obj.Width = 6840
+	
+	#obj = sheet.getColumns().getByName("E")
+	#obj.Width = 6840
+	
+	obj = sheet.getColumns().getByName("G")
+	obj.Width = 6270
+	# Image height 4250
+	# Width of noramll cell is 2240
+	# Height - 470
+	
+	obj = sheet.getRows().getByIndex(0)
+	obj.Height = 210
+	
+	#obj = sheet.getRows().getByIndex(1)
+	#obj.Height = 1400
+	
+	obj = sheet.getCellRangeByName("B2:G2")
+	obj.merge(True)
+	
+	obj = sheet.getCellByPosition(1,1)
+	obj.String = name
+	obj.HoriJustify = CENTER
+	obj.CharFontName = "Tahoma"
+	obj.CharHeight = 33
+	
+	obj = sheet.getCellByPosition(1,2)
+	obj.String = "#"
+	obj = sheet.getCellByPosition(2,2)
+	obj.String = "Icon"
+	obj = sheet.getCellByPosition(3,2)
+	obj.String = "Step"
+	obj = sheet.getCellByPosition(4,2)
+	obj.String = "Distance"
+	obj = sheet.getCellByPosition(5,2)
+	obj.String = "Time"
+	obj = sheet.getCellByPosition(6,2)
+	obj.String = "Map"
+
+	
+	obj = sheet.getCellRangeByName("B3:G3")
+	
+	RGB = lambda r,g,b: r*256*256 + g*256 + b
+	
+	obj.CellBackColor = RGB(128,128,128)
+	obj.CharWeight = BOLD
+	
+	return sheet
+
+def populateRoute(sheet, route, idx, ridx):
+	steps = route["steps"]
+	startRow = str(ridx + 1) # Row numerations starts from 0
+	endRow = ridx + len(steps) + 2 # Additional row for totals
+	
+	obj = sheet.getCellRangeByName("B"+startRow + ":B" + str(endRow) )
+	obj.merge(True)
+	obj.String = str(idx)
+	
+	for i in range(ridx, ridx + len(steps)):
+		obj = sheet.getRows().getByIndex(i)
+		obj.Height = 4250
+	
+	obj = sheet.getCellRangeByName("D"+startRow + ":F" + str(endRow-1) ) # Exclude summary row
+	tmp = []
+	for step in steps:
+		tmp.append((step["text"],step["distance"],step["time"]))
+		# Should insert graphics here
+	obj.DataArray = tuple(tmp)
+	obj = sheet.getCellRangeByName("C"+ str(endRow) + ":D" + str(endRow) )
+	obj.merge(True)
+	obj.String = str(idx)
+	obj = sheet.getCellByPosition(4,endRow)
+	obj.String = route["distance"]
+	obj = sheet.getCellByPosition(5,endRow)
+	obj.String = route["time"]
+	return endRow + 1
+	
+
 def loadJSON(url):
 	handle = request.urlopen(url)
 	obj = json.loads("".join([line.decode("utf-8","strict") for line in handle.readlines()]))
@@ -479,15 +590,24 @@ def findHomeInCity(city):
 	#home.setCity(city)
 	#home.setAddress(address)
 	return home
+
+def useEmbeddedImage(sheet,url, x, y, w, h):
+	size = Size()
+	coord = SWTPoint()
+	coord.X = x
+	coord.Y = y
+	size.Width = w
+	size.Height = h
 	
-def embedImage(sheet, filename, intname, x, y, w, h):
-		size = Size()
-		coord = SWTPoint()
-		coord.X = x
-		coord.Y = y
-		size.Width = w
-		size.Height = h
+	oGraph = oDoc.createInstance("com.sun.star.drawing.GraphicObjectShape")
+	oGraph.GraphicURL = url
+	oGraph.Size = size
+	oGraph.Position = position
 			
+	drawPage = sheet.DrawPage
+	drawPage.add(oGraph)
+
+def embedImage(filename, intname):
 		fpath = "file://" + filename
 		
 		oDoc = XSCRIPTCONTEXT.getDocument()
@@ -495,15 +615,21 @@ def embedImage(sheet, filename, intname, x, y, w, h):
 		bitmaps = oDoc.createInstance( "com.sun.star.drawing.BitmapTable" )
 		bitmaps.insertByName(intname,fpath)
 		url = bitmaps.getByName(intname)
-			
-		oGraph = oDoc.createInstance("com.sun.star.drawing.GraphicObjectShape")
-		oGraph.GraphicURL = url
-		oGraph.Size = size
-		oGraph.Position = coord
-			
-		drawPage = sheet.DrawPage
-		drawPage.add(oGraph)
-	
+		return url
+
+def lookupEmbeddedImage(intname):
+	oDoc = XSCRIPTCONTEXT.getDocument()
+	bitmaps = oDoc.createInstance( "com.sun.star.drawing.BitmapTable" )
+	url = bitmaps.getByName(intname)
+	return url	
+
+def insertImageOnSheet(sheet,filename, intname, x, y, w, h):
+	url = embedImage(filename, intname)
+	useEmbeddedImage(sheet,url,x,y,w,h)
+
+def insertImageOnSheet(sheet, intname, x, y, w, h):
+	url = lookupEmbeddedImage(intname)
+	useEmbeddedImage(sheet,url,x,y,w,h)
 
 ########################################################################
 
@@ -517,8 +643,6 @@ def TestMessageBox():
 	
 	s = res
 	MessageBox(parentwin, s, t, "infobox")
-
-
 
 # Show a message box with the UNO based toolkit
 def MessageBox(ParentWin, MsgText, MsgTitle, MsgType="messbox", MsgButtons=OK):
@@ -635,6 +759,8 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			cityname = self.cityname.getText()
 			sheet = createCitySheet(cityname)
 			
+			routeSheet = createDirectionsSheet(cityname)
+			
 			homept = findHomeInCity(cityname)
 			#MessageBox(parentwin,url,"DEBUG")
 			pts = [homept] + loadKML(self.kmlfile.getText()) # Parse KML
@@ -655,6 +781,9 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 		
 			ptidx = 0
 			
+			ridx = 2
+			sidx = 1
+			
 			n = 0
 			baseX = 20130
 			baseY = 2000
@@ -665,7 +794,7 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			for cluster in clusters:
 				session = None
 				if cluster.getSize() > 2:
-					session, distance = cluster.reorder()
+					session, routes, distance, travelTime = cluster.reorder()
 				points = cluster.sort()
 				for point in points:
 					obj = sheet.getCellByPosition(1,3 + ptidx)
@@ -679,7 +808,12 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 					ptidx = ptidx + 1
 				npoints,mapfile = downloadMap(cluster,idx,session,callback)		
 				idx = idx + npoints
-				embedImage(sheet, mapfile,cityname+"-"+str(n), baseX, baseY + (baseH+baseStrip)*n, baseW, baseH)
+				insertImageOnSheet(sheet, mapfile,cityname+"-"+str(n), baseX, baseY + (baseH+baseStrip)*n, baseW, baseH)
+				
+				if session != None:
+					for route in routes:
+						ridx = populateRoute(routeSheet,route, sidx, ridx)
+						sidx = sidx + 1
 				startProgress = startProgress + int(partProgress)
 				n = n + 1				
 			
