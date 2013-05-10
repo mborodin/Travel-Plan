@@ -520,6 +520,17 @@ def createDirectionsSheet(city):
 	return sheet
 
 def populateRoute(sheet, route, idx, ridx):
+
+	# XXX: Handle this on config sheet
+	cache = {}
+	cache["http://content.mapquest.com/mqsite/turnsigns/icon-dirs-start_sm.gif"] 	= { name : "8a2d083690e0f279be9b06edfdfaf7f3c3b6a7ab" , width : 780, height : 340}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_left_sm.gif"] 			= { name : "6c98e14609dd3b0a8babb467ea00ecf22410a41c" , width : 610, height : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_straight_sm.gif"] 		= { name : "14840649f7f088875128ca11388234a68f23f98d" , width : 610, height : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_right_sm.gif"] 			= { name : "2717998d91c8baf79ba8c5489d85d0d1744d9541" , width : 610, height : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/icon-dirs-end_sm.gif"] 		= { name : "954a6bed01d49a845f34802ee1013647140ef27f" , width : 780, height : 340}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_fork_left2_sm.gif"] 		= { name : "0bc1ade732d84e58934428e7a6e5235254e219fe" , width : 610, height : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_fork_right2_sm.gif"] 	= { name : "a57257819899785cbc5e771cbb6dca32b28655ec" , width : 610, height : 580}
+	
 	steps = route["steps"]
 	startRow = str(ridx + 1) # Row numerations starts from 0
 	endRow = ridx + len(steps) + 2 # Additional row for totals
