@@ -11,6 +11,7 @@ import unohelper
 from com.sun.star.awt import XActionListener
 from com.sun.star.table.CellHoriJustify import CENTER
 from com.sun.star.awt.FontWeight import BOLD
+from com.sun.star.table import TableBorder, BorderLine
 
 import xml.etree.ElementTree as etree
 from math import cos,pi,sqrt,sin,atan2
@@ -204,10 +205,10 @@ class Cluster:
 				substep["icon"] = maneuver["iconUrl"]
 				substep["distance"] = float(maneuver["distance"]) * 1000. # Convert to meters
 				substep["time"] = maneuver["formattedTime"]
-				substep["map"] = maneuver["mapUrl"]
+				#substep["map"] = maneuver["mapUrl"]
 				substeps.append(substep)
 			step["steps"] = substeps
-			routes.append(substeps)
+			routes.append(step)
 		
 		return session,routes,distance,travelTime
 	
@@ -349,7 +350,7 @@ def downloadMap(cluster, startIDX = 1, sessionID=None, progressCallback = None):
 
 	points = cluster.sort()
 
-	url = "http://open.mapquestapi.com/staticmap/v4/getmap?key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u&size=2048,2048&type=map&imagetype=png"
+	url = "http://open.mapquestapi.com/staticmap/v4/getmap?key=Fmjtd|luub2q0t2q%2Crn%3Do5-9u7s0u&size=1454,2048&type=map&imagetype=png"
 	
 	homept = findHome(points)
 	home = ""
@@ -400,8 +401,37 @@ def downloadMap(cluster, startIDX = 1, sessionID=None, progressCallback = None):
 	
 	return len(points),mapfile
 
+def addBorderToRegion(region):
+	RGB = lambda r,g,b: r*256*256 + g*256 + b
+	#line = BorderLine()
+	#line.Color = RGB(127,127,127)
+	#line.InnerLineWidth = 0
+	#line.OuterLineWidth = 0
+	
+	border = region.TopBorder #TableBorder()
+	border.OuterLineWidth = 1.75
+	border.Color = 0
+	#border.TopLine = line
+	#border.IsTopLineValid = True
+	#border.BottomLine = line
+	#border.IsBottomLineValid = True
+	#border.LeftLine = line
+	#border.IsLeftLineValid = True
+	#border.RightLine = line
+	#border.IsRightLineValid = True
+	#border.HorizontalLine = line
+	#border.IsHorizontalLineValid = True
+	#border.VerticalLine = line
+	#border.IsVerticalLineValid = True
+	
+	region.TopBorder = border
+	region.BottomBorder = border
+	region.LeftBorder = border
+	region.RightBorder = border
+
 def createCitySheet(name):
 	oDoc = XSCRIPTCONTEXT.getDocument()
+	
 	sheet = oDoc.Sheets.insertNewByName(name,oDoc.Sheets.getCount())
 	sheet = oDoc.Sheets.getByName(name)
 	
@@ -467,7 +497,7 @@ def createDirectionsSheet(city):
 	obj.Width = 540
 	
 	obj = sheet.getColumns().getByName("C")
-	obj.Width = 760
+	obj.Width = 780
 	
 	#obj = sheet.getColumns().getByName("D")
 	#obj.Width = 6840
@@ -519,24 +549,68 @@ def createDirectionsSheet(city):
 	
 	return sheet
 
+def useEmbeddedImage(sheet,url, x, y, w, h):
+	size = Size()
+	coord = SWTPoint()
+	coord.X = x
+	coord.Y = y
+	size.Width = w
+	size.Height = h
+	
+	oDoc = XSCRIPTCONTEXT.getDocument()
+	oGraph = oDoc.createInstance("com.sun.star.drawing.GraphicObjectShape")
+	oGraph.GraphicURL = url
+	oGraph.Size = size
+	oGraph.Position = coord
+			
+	drawPage = sheet.DrawPage
+	drawPage.add(oGraph)
+
+def embedImage(filename, intname):
+		fpath = "file://" + filename
+		
+		oDoc = XSCRIPTCONTEXT.getDocument()
+		
+		bitmaps = oDoc.createInstance( "com.sun.star.drawing.BitmapTable" )
+		bitmaps.insertByName(intname,fpath)
+		url = bitmaps.getByName(intname)
+		return url
+
+def lookupEmbeddedImage(intname):
+	oDoc = XSCRIPTCONTEXT.getDocument()
+	bitmaps = oDoc.createInstance( "com.sun.star.drawing.BitmapTable" )
+	url = bitmaps.getByName(intname)
+	return url	
+
+def insertImageOnSheet(sheet,filename, intname, x, y, w, h):
+	url = embedImage(filename, intname)
+	useEmbeddedImage(sheet,url,x,y,w,h)
+
+def insertInternalImageOnSheet(sheet, intname, x, y, w, h):
+	url = lookupEmbeddedImage(intname)
+	useEmbeddedImage(sheet,url,x,y,w,h)
+
 def populateRoute(sheet, route, idx, ridx):
 
 	# XXX: Handle this on config sheet
 	cache = {}
-	cache["http://content.mapquest.com/mqsite/turnsigns/icon-dirs-start_sm.gif"] 	= { name : "8a2d083690e0f279be9b06edfdfaf7f3c3b6a7ab" , width : 780, height : 340}
-	cache["http://content.mapquest.com/mqsite/turnsigns/rs_left_sm.gif"] 			= { name : "6c98e14609dd3b0a8babb467ea00ecf22410a41c" , width : 610, height : 580}
-	cache["http://content.mapquest.com/mqsite/turnsigns/rs_straight_sm.gif"] 		= { name : "14840649f7f088875128ca11388234a68f23f98d" , width : 610, height : 580}
-	cache["http://content.mapquest.com/mqsite/turnsigns/rs_right_sm.gif"] 			= { name : "2717998d91c8baf79ba8c5489d85d0d1744d9541" , width : 610, height : 580}
-	cache["http://content.mapquest.com/mqsite/turnsigns/icon-dirs-end_sm.gif"] 		= { name : "954a6bed01d49a845f34802ee1013647140ef27f" , width : 780, height : 340}
-	cache["http://content.mapquest.com/mqsite/turnsigns/rs_fork_left2_sm.gif"] 		= { name : "0bc1ade732d84e58934428e7a6e5235254e219fe" , width : 610, height : 580}
-	cache["http://content.mapquest.com/mqsite/turnsigns/rs_fork_right2_sm.gif"] 	= { name : "a57257819899785cbc5e771cbb6dca32b28655ec" , width : 610, height : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/icon-dirs-start_sm.gif"] 	= { "name" : "8a2d083690e0f279be9b06edfdfaf7f3c3b6a7ab" , "width" : 780, "height" : 340}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_left_sm.gif"] 			= { "name" : "6c98e14609dd3b0a8babb467ea00ecf22410a41c" , "width" : 610, "height" : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_straight_sm.gif"] 		= { "name" : "14840649f7f088875128ca11388234a68f23f98d" , "width" : 610, "height" : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_right_sm.gif"] 			= { "name" : "2717998d91c8baf79ba8c5489d85d0d1744d9541" , "width" : 610, "height" : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/icon-dirs-end_sm.gif"] 		= { "name" : "954a6bed01d49a845f34802ee1013647140ef27f" , "width" : 780, "height" : 340}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_fork_left2_sm.gif"] 		= { "name" : "0bc1ade732d84e58934428e7a6e5235254e219fe" , "width" : 610, "height" : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_fork_right2_sm.gif"] 	= { "name" : "a57257819899785cbc5e771cbb6dca32b28655ec" , "width" : 610, "height" : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_slight_left_sm.gif"] 	= { "name" : "e5b14ddfed6aa803b87f7a9ecfa6b75862101f8d" , "width" : 610, "height" : 580}
+	cache["http://content.mapquest.com/mqsite/turnsigns/rs_slight_right_sm.gif"] 	= { "name" : "53ba36dff04ba46398a085126166f23e2c1e0eae" , "width" : 610, "height" : 580}
 	
 	steps = route["steps"]
 	startRow = str(ridx + 1) # Row numerations starts from 0
-	endRow = ridx + len(steps) + 2 # Additional row for totals
+	endRow = ridx + len(steps) + 1 # Additional row for totals
 	
 	obj = sheet.getCellRangeByName("B"+startRow + ":B" + str(endRow) )
 	obj.merge(True)
+	obj = sheet.getCellByPosition(1,ridx)
 	obj.String = str(idx)
 	
 	for i in range(ridx, ridx + len(steps)):
@@ -545,16 +619,23 @@ def populateRoute(sheet, route, idx, ridx):
 	
 	obj = sheet.getCellRangeByName("D"+startRow + ":F" + str(endRow-1) ) # Exclude summary row
 	tmp = []
+	shiftX = 810
+	shiftY = 2040
 	for step in steps:
 		tmp.append((step["text"],step["distance"],step["time"]))
+		icon = step["icon"]
+		iconOBJ = cache[icon]
+		insertInternalImageOnSheet(sheet,iconOBJ["name"],shiftX + (780 - iconOBJ["width"])/2,shiftY,iconOBJ["width"],iconOBJ["height"])
+		shiftY = shiftY + 4250
 		# Should insert graphics here
 	obj.DataArray = tuple(tmp)
-	obj = sheet.getCellRangeByName("C"+ str(endRow) + ":D" + str(endRow) )
+	obj = sheet.getCellRangeByName("C"+ str(endRow-1) + ":D" + str(endRow-1) )
 	obj.merge(True)
+	obj = sheet.getCellByPosition(2,endRow-1)
 	obj.String = str(idx)
-	obj = sheet.getCellByPosition(4,endRow)
+	obj = sheet.getCellByPosition(4,endRow-1)
 	obj.String = route["distance"]
-	obj = sheet.getCellByPosition(5,endRow)
+	obj = sheet.getCellByPosition(5,endRow-1)
 	obj.String = route["time"]
 	return endRow + 1
 	
@@ -581,6 +662,10 @@ def findHomeInCity(city):
 	obj = sheet.getCellByPosition(6,3+idx) # $G4+idx == Home address
 	address = obj.String
 	
+	tmp = address.split(",")
+	if len(tmp) > 1:
+		city = tmp[1].strip()
+	
 	url = "https://translate.yandex.net/api/v1.5/tr.json/detect?key=trnsl.1.1.20130429T215441Z.6f616164f163020b.8fb0093ebd7d15e7330a32a8c6269f04bf4814e7&text=" + parse.quote(city)
 	obj = loadJSON(url)
 	lang = obj["lang"]
@@ -601,46 +686,6 @@ def findHomeInCity(city):
 	#home.setCity(city)
 	#home.setAddress(address)
 	return home
-
-def useEmbeddedImage(sheet,url, x, y, w, h):
-	size = Size()
-	coord = SWTPoint()
-	coord.X = x
-	coord.Y = y
-	size.Width = w
-	size.Height = h
-	
-	oGraph = oDoc.createInstance("com.sun.star.drawing.GraphicObjectShape")
-	oGraph.GraphicURL = url
-	oGraph.Size = size
-	oGraph.Position = position
-			
-	drawPage = sheet.DrawPage
-	drawPage.add(oGraph)
-
-def embedImage(filename, intname):
-		fpath = "file://" + filename
-		
-		oDoc = XSCRIPTCONTEXT.getDocument()
-		
-		bitmaps = oDoc.createInstance( "com.sun.star.drawing.BitmapTable" )
-		bitmaps.insertByName(intname,fpath)
-		url = bitmaps.getByName(intname)
-		return url
-
-def lookupEmbeddedImage(intname):
-	oDoc = XSCRIPTCONTEXT.getDocument()
-	bitmaps = oDoc.createInstance( "com.sun.star.drawing.BitmapTable" )
-	url = bitmaps.getByName(intname)
-	return url	
-
-def insertImageOnSheet(sheet,filename, intname, x, y, w, h):
-	url = embedImage(filename, intname)
-	useEmbeddedImage(sheet,url,x,y,w,h)
-
-def insertImageOnSheet(sheet, intname, x, y, w, h):
-	url = lookupEmbeddedImage(intname)
-	useEmbeddedImage(sheet,url,x,y,w,h)
 
 ########################################################################
 
@@ -770,7 +815,7 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 			cityname = self.cityname.getText()
 			sheet = createCitySheet(cityname)
 			
-			routeSheet = createDirectionsSheet(cityname)
+			#routeSheet = createDirectionsSheet(cityname)
 			
 			homept = findHomeInCity(cityname)
 			#MessageBox(parentwin,url,"DEBUG")
@@ -792,13 +837,13 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 		
 			ptidx = 0
 			
-			ridx = 2
+			ridx = 3
 			sidx = 1
 			
 			n = 0
 			baseX = 20130
 			baseY = 2000
-			baseW = 15500
+			baseW = 11005
 			baseH = 15500
 			baseStrip = 50
 		
@@ -823,18 +868,22 @@ class ImportKMLDialog( unohelper.Base, XActionListener ):
 				
 				if session != None:
 					for route in routes:
-						ridx = populateRoute(routeSheet,route, sidx, ridx)
+						#ridx = populateRoute(routeSheet,route, sidx, ridx)
 						sidx = sidx + 1
 				startProgress = startProgress + int(partProgress)
 				n = n + 1				
 			
 			# Row height if picture is present: 1790
 			
+			
+			addBorderToRegion(sheet.getCellRangeByName("B3:E"+str(3+ptidx)))
+			
 			self.progress.setValue(300)
 			
 			MessageBox(parentwin,"Import success","Done")
 			oDoc = XSCRIPTCONTEXT.getDocument()
 			oDoc.CurrentController.ActiveSheet = sheet
+			oDoc.CurrentController.setPropertyValue( "ShowGrid",  False ) 
 		
 		except BaseException as e:
 				from traceback import format_exc
